@@ -1,0 +1,11 @@
+<launch>
+
+  <!-- Joy PS3 Node -->
+  <node respawn="true" pkg="joy" type="joy_node" name="PS3_Joy_Node">
+    <param name="dev" type="string" value="/dev/input/js0" />
+    <param name="deadzone" value="0.12" />
+  </node>
+
+  <node pkg="rover_pkg" type="user_input" name="user_input_node" output="screen" />
+
+</launch>
