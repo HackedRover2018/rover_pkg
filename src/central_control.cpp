@@ -2,10 +2,14 @@
 #include <sstream>
 #include <math.h>
 #include <unistd.h>
-#include <rover_pkg/input_msg>
-#include <rover_pkg/drive_msg>
+#include <rover_pkg/input_msg.h>
+#include <rover_pkg/drive_msg.h>
 #include "ros/ros.h"
-#include "serail/serial.h"
+#include "serial/serial.h"
+
+#define Pi acos(-1.0)
+#define TWITCH_ON 1
+#define TWITCH_OFF 0
 
 class CentralControlNode {
  public:
@@ -13,22 +17,34 @@ class CentralControlNode {
     void rectToPolar(double x, double y, double &r, double &theta);
 
  private:
-      ros::NodeHandle ng_;
-      ros::Subsriber input_sub_;
-      /* ros::Publisher drive_pub_; */
+    int state_;
 
-      void inputCallback(const rover_pkg::input_msg::ConstPtr& msg);
+    serial::Serial serial_boy_;
+
+    ros::NodeHandle nh_;
+    ros::Subscriber input_sub_;
+    ros::Subscriber twitch_sub_;
+
+    void inputCallback(const rover_pkg::input_msg::ConstPtr& msg);
+    void twitchCallback(const rover_pkg::input_msg::ConstPtr& msg);
 };
 
 
-CentralControlNode::CentralControlNode() {
-  /* drive_pub_ = nh_.advertise<rover_pkg::drive_msgs>("/drive_topic", 10); */
+CentralControlNode::CentralControlNode() : 
+  state_(TWITCH_OFF),
+  serial_boy_("/dev/ttyUSB0", 9600) {
 
-  inpout_sub_ = nh_.subscribe("/input_topic", 10,
+  input_sub_ = nh_.subscribe("/input_topic", 10,
       &CentralControlNode::inputCallback, this);
+
+  twitch_sub_ = nh_.subscribe("/twitch_topic", 10,
+      &CentralControlNode::twitchCallback, this);
+
+  if (!serial_boy_.isOpen())
+    ROS_INFO("No arduino connected to /dev/ttyUSB0. Please check your connection");
 }
 
-CentralControlNode::rectToPolar(double x, douvle y, douvle &r, double &theta) {
+void CentralControlNode::rectToPolar(double x, double y, double &r, double &theta) {
   const double toDegrees = 180.0/Pi;
 
   r = sqrt((pow(x, 2))+(pow(y, 2)));
@@ -42,29 +58,61 @@ CentralControlNode::rectToPolar(double x, douvle y, douvle &r, double &theta) {
   }
 }
 
-void inputCallback(const rover_pkg::input_msg::ConstPtr& msg) {
+void CentralControlNode::inputCallback(const rover_pkg::input_msg::ConstPtr& msg) {
   double mag, angle;
   uint8_t buf;
   std::stringstream serial_stream;
   rover_pkg::drive_msg motor_cmd;
 
-  CentralControlNode::rectToPolar(msg->x_coor, msg->y_coor, mag = 0, angle = 0);
-  motor_cmd.magnitude = mag;
-  motor_cmd.angle = angle;
+  if (msg->state == 1)
+    state_ =  state_^1;
 
-  ROS_INFO("[DRIVE] Magnitude  [%f]", motor_cmd.magnitude);
-  ROS_INFO("[DRIVE] Polar Angle  [%f]", motor_cmd.polar_angle);
+  if (state_ == TWITCH_OFF) {
+    CentralControlNode::rectToPolar(msg->x_coord, msg->y_coord, mag = 0, angle = 0);
+    motor_cmd.magnitude = mag;
+    motor_cmd.angle = angle;
 
-  serial_stream << std::fixed << std::setprecision(5)
-    << motor_cmd.magnitude << " " << motor_cmd.angle << "\n";
+    ROS_INFO("[DRIVE] Magnitude  [%f]", motor_cmd.magnitude);
+    ROS_INFO("[DRIVE] Polar Angle  [%f]", motor_cmd.angle);
 
-  const std::string str = serial_stream.str();
+    serial_stream << std::fixed << std::setprecision(5)
+      << motor_cmd.magnitude << " " << motor_cmd.angle << "\n";
 
-  size_t bytes_sent = this->my_serial.write(str);
-  size_t bytes_read = this->my_serial.read(&buf, str.length());
+    const std::string str = serial_stream.str();
 
-  ROS_INFO("[DRIVE] Bytes Sent [%zu]", bytes_sent);
-  ROS_INFO("[DRIVE] Read [%s] [%zu bytes]", &buf, bytes_read)
+    size_t bytes_sent = this->serial_boy_.write(str);
+    size_t bytes_read = this->serial_boy_.read(&buf, str.length());
+
+    ROS_INFO("[DRIVE] Bytes Sent [%zu]", bytes_sent);
+    ROS_INFO("[DRIVE] Read [%s] [%zu bytes]", &buf, bytes_read);
+  }
+}
+
+void CentralControlNode::twitchCallback(const rover_pkg::input_msg::ConstPtr& msg) {
+  double mag, angle;
+  uint8_t buf;
+  std::stringstream serial_stream;
+  rover_pkg::drive_msg motor_cmd;
+
+  if (state_ == TWITCH_ON) {
+    CentralControlNode::rectToPolar(msg->x_coord, msg->y_coord, mag = 0, angle = 0);
+    motor_cmd.magnitude = mag;
+    motor_cmd.angle = angle;
+
+    ROS_INFO("[DRIVE] Magnitude  [%f]", motor_cmd.magnitude);
+    ROS_INFO("[DRIVE] Polar Angle  [%f]", motor_cmd.angle);
+
+    serial_stream << std::fixed << std::setprecision(5)
+      << motor_cmd.magnitude << " " << motor_cmd.angle << "\n";
+
+    const std::string str = serial_stream.str();
+
+    size_t bytes_sent = this->serial_boy_.write(str);
+    size_t bytes_read = this->serial_boy_.read(&buf, str.length());
+
+    ROS_INFO("[DRIVE] Bytes Sent [%zu]", bytes_sent);
+    ROS_INFO("[DRIVE] Read [%s] [%zu bytes]", &buf, bytes_read);
+  }
 }
 
 int main(int argc, char** argv) {

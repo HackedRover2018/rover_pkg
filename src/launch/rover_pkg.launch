@@ -7,5 +7,6 @@
   </node>
 
   <node pkg="rover_pkg" type="user_input" name="user_input_node" output="screen" />
+  <node pkg="rover_pkg" type="central_control" name="central_control_node" output="screen" />
 
 </launch>
