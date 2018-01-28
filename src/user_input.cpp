@@ -4,8 +4,8 @@
 #include <iostream>
 #include <unistd.h>
 
-#define Y_AXIS 1
-#define X_AXIS 2
+#define L_AXIS 1
+#define R_AXIS 3
 #define TRI_BUT 12
 
 class UserInputNode{
@@ -24,7 +24,7 @@ class UserInputNode{
 
 UserInputNode::UserInputNode():
   yscale_(1),
-  xscale_(-1){
+  xscale_(1){
   
   cmd_pub_ = nh_.advertise<rover_pkg::input_msg>("/input_topic", 10);
   ps3_sub_ = nh_.subscribe("joy", 10, &UserInputNode::ps3CmdCallback, this);
@@ -33,13 +33,15 @@ UserInputNode::UserInputNode():
 
 void UserInputNode::ps3CmdCallback(const sensor_msgs::Joy::ConstPtr& msg){
 
-  ROS_INFO("PS3 MSG RECEIVED");
+  //ROS_INFO("PS3 MSG RECEIVED");
 
   rover_pkg::input_msg polar_msg;
   
   polar_msg.switch_state = 0;
-  polar_msg.x_coord = xscale_*msg->axes[X_AXIS];
-  polar_msg.y_coord = yscale_*msg->axes[Y_AXIS];
+  polar_msg.r_mag = xscale_*msg->axes[R_AXIS];
+  polar_msg.l_mag = yscale_*msg->axes[L_AXIS];
+  ROS_INFO("r_mag = %f", polar_msg.r_mag);
+  ROS_INFO("l_mag = %f", polar_msg.l_mag);
 
   if(msg->buttons[TRI_BUT]){
     polar_msg.switch_state = 1;  

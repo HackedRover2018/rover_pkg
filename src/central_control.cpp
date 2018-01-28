@@ -5,7 +5,6 @@
 #include <math.h>
 #include <unistd.h>
 #include <rover_pkg/input_msg.h>
-#include <rover_pkg/drive_msg.h>
 #include "ros/ros.h"
 #include "serial/serial.h"
 
@@ -60,24 +59,16 @@ void CentralControlNode::rectToPolar(double x, double y, double &r, double &thet
 }
 
 void CentralControlNode::inputCallback(const rover_pkg::input_msg::ConstPtr& msg) {
-  double mag, angle;
   uint8_t buf;
   std::stringstream serial_stream;
-  rover_pkg::drive_msg motor_cmd;
 
   if (msg->switch_state)
     state_ = state_ ^ 1;
 
   if (state_ == TWITCH_OFF) {
-    CentralControlNode::rectToPolar(msg->x_coord, msg->y_coord, mag = 0, angle = 0);
-    motor_cmd.magnitude = mag;
-    motor_cmd.angle = angle;
-
-    ROS_INFO("[DRIVE] Magnitude  [%f]", motor_cmd.magnitude);
-    ROS_INFO("[DRIVE] Polar Angle  [%f]", motor_cmd.angle);
 
     serial_stream << std::fixed << std::setprecision(5)
-      << motor_cmd.magnitude << " " << motor_cmd.angle << "\n";
+      << msg->l_mag << " " << msg->r_mag << "\n";
 
     const std::string str = serial_stream.str();
 
@@ -91,21 +82,12 @@ void CentralControlNode::inputCallback(const rover_pkg::input_msg::ConstPtr& msg
 
 
 void CentralControlNode::twitchCallback(const rover_pkg::input_msg::ConstPtr& msg) {
-  double mag, angle;
   uint8_t buf;
   std::stringstream serial_stream;
-  rover_pkg::drive_msg motor_cmd;
 
   if (state_ == TWITCH_ON) {
-    CentralControlNode::rectToPolar(msg->x_coord, msg->y_coord, mag = 0, angle = 0);
-    motor_cmd.magnitude = mag;
-    motor_cmd.angle = angle;
-
-    ROS_INFO("[DRIVE] Magnitude  [%f]", motor_cmd.magnitude);
-    ROS_INFO("[DRIVE] Polar Angle  [%f]", motor_cmd.angle);
-
     serial_stream << std::fixed << std::setprecision(5)
-      << motor_cmd.magnitude << " " << motor_cmd.angle << "\n";
+      << msg->l_mag << " " << msg->r_mag << "\n";
 
     const std::string str = serial_stream.str();
 
