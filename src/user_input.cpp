@@ -1,14 +1,18 @@
 #include "ros/ros.h"
 #include "sensor_msgs/Joy.h"
+#include <rover_pkg/input_msg.h>
 #include <iostream>
 #include <unistd.h>
+
+#define Y_AXIS 1
+#define X_AXIS 2
+#define TRI_BUT 12
 
 class UserInputNode{
   public:
     UserInputNode();
 
   private:
-    int xin_axis_, yin_axis_, tri_button_;
     int xscale_, yscale_;
 
     ros::NodeHandle nh_;
@@ -19,20 +23,30 @@ class UserInputNode{
 };
 
 UserInputNode::UserInputNode():
-  yin_axis_(1),
-  xin_axis_(2),
-  tri_button_(12),
   yscale_(1),
   xscale_(-1){
   
-  //cmdpub_ = nh_.advertise(/*TODO CREATE CUSTOM MSG AND ADD IT HERE*/, "/input", 10);
+  cmd_pub_ = nh_.advertise<rover_pkg::input_msg>("/input_topic", 10);
   ps3_sub_ = nh_.subscribe("joy", 10, &UserInputNode::ps3CmdCallback, this);
   
 }
 
-void UserInputNode::ps3CmdCallback(const sensor_msgs::Joy::ConstPtr& ps3_msg){
+void UserInputNode::ps3CmdCallback(const sensor_msgs::Joy::ConstPtr& msg){
 
   ROS_INFO("PS3 MSG RECEIVED");
+
+  rover_pkg::input_msg polar_msg;
+  
+  polar_msg.switch_state = 0;
+  polar_msg.x_coord = xscale_*msg->axes[X_AXIS];
+  polar_msg.y_coord = yscale_*msg->axes[Y_AXIS];
+
+  if(msg->buttons[TRI_BUT]){
+    polar_msg.switch_state = 1;  
+  }
+
+  cmd_pub_.publish(polar_msg);
+
 }
 
 int main(int argc, char** argv){

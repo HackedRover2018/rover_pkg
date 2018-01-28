@@ -1,5 +1,7 @@
+#include <dirent.h>
 #include <iostream>
 #include <sstream>
+#include <string>
 #include <math.h>
 #include <unistd.h>
 #include <rover_pkg/input_msg.h>
@@ -13,7 +15,7 @@
 
 class CentralControlNode {
  public:
-    CentralControlNode();
+    CentralControlNode(const std::string port, uint32_t baud);
     void rectToPolar(double x, double y, double &r, double &theta);
 
  private:
@@ -30,18 +32,17 @@ class CentralControlNode {
 };
 
 
-CentralControlNode::CentralControlNode() : 
+CentralControlNode::CentralControlNode(const std::string port, uint32_t baud) : 
   state_(TWITCH_OFF),
-  serial_boy_("/dev/ttyUSB0", 9600) {
+  serial_boy_(port, baud, serial::Timeout::simpleTimeout(1000)){
 
+  ROS_ERROR("Create input_topic");
   input_sub_ = nh_.subscribe("/input_topic", 10,
       &CentralControlNode::inputCallback, this);
 
+  ROS_ERROR("Create twitch topic");
   twitch_sub_ = nh_.subscribe("/twitch_topic", 10,
       &CentralControlNode::twitchCallback, this);
-
-  if (!serial_boy_.isOpen())
-    ROS_INFO("No arduino connected to /dev/ttyUSB0. Please check your connection");
 }
 
 void CentralControlNode::rectToPolar(double x, double y, double &r, double &theta) {
@@ -64,8 +65,8 @@ void CentralControlNode::inputCallback(const rover_pkg::input_msg::ConstPtr& msg
   std::stringstream serial_stream;
   rover_pkg::drive_msg motor_cmd;
 
-  if (msg->state == 1)
-    state_ =  state_^1;
+  if (msg->switch_state)
+    state_ = state_ ^ 1;
 
   if (state_ == TWITCH_OFF) {
     CentralControlNode::rectToPolar(msg->x_coord, msg->y_coord, mag = 0, angle = 0);
@@ -87,6 +88,7 @@ void CentralControlNode::inputCallback(const rover_pkg::input_msg::ConstPtr& msg
     ROS_INFO("[DRIVE] Read [%s] [%zu bytes]", &buf, bytes_read);
   }
 }
+
 
 void CentralControlNode::twitchCallback(const rover_pkg::input_msg::ConstPtr& msg) {
   double mag, angle;
@@ -115,9 +117,25 @@ void CentralControlNode::twitchCallback(const rover_pkg::input_msg::ConstPtr& ms
   }
 }
 
+
 int main(int argc, char** argv) {
+  
+  ROS_INFO("ros::init");
   ros::init(argc, argv, "central_control");
-  CentralControlNode node;
+
+  ROS_INFO("Checking /dev/serial exists");
+  DIR* dir = opendir("/dev/serial/");
+  if(ENOENT == errno){
+    ROS_ERROR("No arduino connected on dev/serial. Please check your connection and restart the ROS structure");
+    exit(EXIT_FAILURE);
+  }
+
+  const std::string port = "/dev/ttyACM0";
+  uint32_t baud = 9600;
+
+  ROS_INFO("Call centralcontrolnode constructor");
+  CentralControlNode node(port, baud);
+
   ros::spin();
   return 0;
 }
