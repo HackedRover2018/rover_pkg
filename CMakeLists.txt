@@ -139,6 +139,7 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/rover_pkg_node.cpp)
 add_executable(user_input src/user_input.cpp)
 add_executable(central_control src/central_control.cpp)
+add_executable(twitch_input src/twitch_input.py)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -156,6 +157,7 @@ add_executable(central_control src/central_control.cpp)
 # )
 target_link_libraries(user_input ${catkin_LIBRARIES})
 target_link_libraries(central_control ${catkin_LIBRARIES})
+target_link_libraries(twitch_input ${catkin_LIBRARIES})
 
 #############
 ## Install ##
