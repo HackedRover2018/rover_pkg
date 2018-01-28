@@ -15,6 +15,8 @@ find_package(catkin REQUIRED COMPONENTS
   serial
 )
 
+catkin_python_setup()
+
 ## System dependencies are found with CMake's conventions
 # find_package(Boost REQUIRED COMPONENTS system)
 
@@ -139,7 +141,7 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/rover_pkg_node.cpp)
 add_executable(user_input src/user_input.cpp)
 add_executable(central_control src/central_control.cpp)
-add_executable(twitch_input src/twitch_input.py)
+#add_executable(twitch_input src/twitch_input.py)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -157,7 +159,7 @@ add_executable(twitch_input src/twitch_input.py)
 # )
 target_link_libraries(user_input ${catkin_LIBRARIES})
 target_link_libraries(central_control ${catkin_LIBRARIES})
-target_link_libraries(twitch_input ${catkin_LIBRARIES})
+#target_link_libraries(twitch_input ${catkin_LIBRARIES})
 
 #############
 ## Install ##
@@ -172,6 +174,7 @@ target_link_libraries(twitch_input ${catkin_LIBRARIES})
 #   scripts/my_python_script
 #   DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION}
 # )
+install(PROGRAMS src/twitch_input.py DESTINATION ${CATKIN_PACKAGE_BIN_DESTINATION})
 
 ## Mark executables and/or libraries for installation
 # install(TARGETS ${PROJECT_NAME} ${PROJECT_NAME}_node
